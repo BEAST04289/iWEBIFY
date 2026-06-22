@@ -1,0 +1,62 @@
+[
+  {
+    "id": "crm_basic",
+    "prompt": "Build a CRM with contacts, companies, and deals. Users should be able to track interactions, set reminders, and view a dashboard with sales pipeline metrics. Admin and sales rep roles.",
+    "expected_entities": ["users", "contacts", "companies", "deals", "interactions"],
+    "expected_features": ["dashboard", "contact_management", "deal_tracking"]
+  },
+  {
+    "id": "ecommerce",
+    "prompt": "Create an e-commerce store with products, categories, shopping cart, order management, and Stripe checkout. Admin can manage inventory, customers can browse and buy. Include order status tracking.",
+    "expected_entities": ["users", "products", "categories", "orders", "order_items", "cart_items"],
+    "expected_features": ["product_catalog", "shopping_cart", "checkout", "order_tracking"]
+  },
+  {
+    "id": "project_mgmt",
+    "prompt": "Build a project management tool like Trello. Teams can create boards, add lists and cards. Cards have assignees, due dates, labels, and comments. Team admin and member roles.",
+    "expected_entities": ["users", "teams", "boards", "lists", "cards", "comments"],
+    "expected_features": ["board_management", "card_management", "team_collaboration"]
+  },
+  {
+    "id": "healthcare",
+    "prompt": "Healthcare appointment booking system. Patients can browse doctors by specialty, book appointments, and view medical history. Doctors can manage their schedule and view patient records. Admin manages the system.",
+    "expected_entities": ["users", "doctors", "patients", "appointments", "medical_records"],
+    "expected_features": ["appointment_booking", "doctor_search", "medical_history"]
+  },
+  {
+    "id": "lms",
+    "prompt": "Learning management system with courses, lessons, quizzes, and student progress tracking. Instructors create content, students enroll and complete courses. Include certificates on completion.",
+    "expected_entities": ["users", "courses", "lessons", "quizzes", "enrollments"],
+    "expected_features": ["course_management", "progress_tracking", "quiz_system"]
+  },
+  {
+    "id": "inventory",
+    "prompt": "Inventory management system for a warehouse. Track products, stock levels, suppliers, purchase orders, and shipments. Alert when stock is low. Manager and warehouse staff roles.",
+    "expected_entities": ["products", "suppliers", "purchase_orders", "shipments"],
+    "expected_features": ["stock_tracking", "purchase_order_management", "low_stock_alerts"]
+  },
+  {
+    "id": "blog_platform",
+    "prompt": "A blogging platform where users can write posts with categories and tags, add images, and comment on posts. Authors and readers roles. Include a featured posts section on the homepage.",
+    "expected_entities": ["users", "posts", "categories", "tags", "comments"],
+    "expected_features": ["post_management", "commenting", "featured_posts"]
+  },
+  {
+    "id": "event_booking",
+    "prompt": "Event booking platform. Organizers create events with dates, venues, and ticket tiers. Attendees browse events, purchase tickets, and get QR code confirmations. Include event analytics for organizers.",
+    "expected_entities": ["users", "events", "venues", "tickets", "bookings"],
+    "expected_features": ["event_management", "ticket_booking", "analytics"]
+  },
+  {
+    "id": "hr_portal",
+    "prompt": "HR employee portal. Employees can view their profile, submit leave requests, check payslips, and see company announcements. HR managers approve leaves and manage employee records. Department-based access.",
+    "expected_entities": ["employees", "departments", "leave_requests", "payslips", "announcements"],
+    "expected_features": ["leave_management", "payslip_viewing", "announcements"]
+  },
+  {
+    "id": "social_media",
+    "prompt": "A social media app where users create profiles, post updates with photos, follow other users, like and comment on posts. Include a feed algorithm showing followed users' posts and trending content.",
+    "expected_entities": ["users", "posts", "follows", "likes", "comments"],
+    "expected_features": ["feed", "posting", "following", "engagement"]
+  }
+]

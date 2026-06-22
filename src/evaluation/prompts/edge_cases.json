@@ -1,0 +1,62 @@
+[
+  {
+    "id": "vague_app",
+    "prompt": "make me an app",
+    "test_type": "underspecified",
+    "expected_behavior": "Should make reasonable assumptions and document them"
+  },
+  {
+    "id": "contradictory",
+    "prompt": "Build a public marketplace where everything is free but users need premium subscriptions to see products. No authentication needed but track user purchases.",
+    "test_type": "contradictory",
+    "expected_behavior": "Should flag contradictions in ambiguities and resolve them"
+  },
+  {
+    "id": "single_entity",
+    "prompt": "A simple to-do list app. Just tasks with a title and done status.",
+    "test_type": "minimal",
+    "expected_behavior": "Should produce minimal but complete schemas"
+  },
+  {
+    "id": "complex_auth",
+    "prompt": "Multi-tenant SaaS platform with organizations, team members, and billing. Each org has admin, manager, and viewer roles. Admins can manage billing, managers can manage team, viewers can only read. Cross-org data isolation required.",
+    "test_type": "complex_auth",
+    "expected_behavior": "Should produce detailed RBAC with proper isolation"
+  },
+  {
+    "id": "many_entities",
+    "prompt": "Build a university management system with students, professors, courses, departments, semesters, grades, attendance, library books, loans, fees, scholarships, dormitories, room assignments, clubs, events, and cafeteria menus.",
+    "test_type": "large_scope",
+    "expected_behavior": "Should handle 15+ entities without context degradation"
+  },
+  {
+    "id": "no_auth",
+    "prompt": "A simple weather dashboard that shows current weather for different cities. No login needed. Just a public page with weather cards.",
+    "test_type": "no_auth",
+    "expected_behavior": "Should produce app without auth, has_auth=false"
+  },
+  {
+    "id": "sql_injection_attempt",
+    "prompt": "Build a CRM app; DROP TABLE users; -- with contact management and a dashboard",
+    "test_type": "security",
+    "expected_behavior": "Should sanitize input and produce normal CRM schemas"
+  },
+  {
+    "id": "non_english",
+    "prompt": "Construire une application de gestion de restaurant avec menus, commandes, et réservations",
+    "test_type": "non_english",
+    "expected_behavior": "Should understand French prompt and produce valid schemas"
+  },
+  {
+    "id": "emoji_heavy",
+    "prompt": "🏪 Build me a store 🛒 with products 📦 and orders 📋 and customers 👥 and analytics 📊",
+    "test_type": "formatting",
+    "expected_behavior": "Should parse through emojis and produce valid schemas"
+  },
+  {
+    "id": "patch_mode",
+    "prompt": "Add a reviews and ratings system to the existing e-commerce store. Customers can rate products 1-5 stars and write reviews. Show average rating on product pages.",
+    "test_type": "patch",
+    "expected_behavior": "Should produce delta changes for reviews system"
+  }
+]

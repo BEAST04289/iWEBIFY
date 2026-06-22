@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iWebify — AI App Compiler</title>
+    <meta name="description" content="iWebify is a compiler for software generation. Natural language in, validated executable applications out.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           DESIGN TOKENS
+           ============================================================ */
+        :root {
+            --bg-primary: #09090b;
+            --bg-surface: #18181b;
+            --bg-surface-2: #1f1f23;
+            --border: #27272a;
+            --border-hover: #3f3f46;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-tertiary: #71717a;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-dim: rgba(99, 102, 241, 0.15);
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        button { cursor: pointer; font-family: var(--font-sans); }
+
+        /* ============================================================
+           HERO SECTION
+           ============================================================ */
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            opacity: 0.4;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 100px;
+            font-size: 13px;
+            color: #818cf8;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+        .hero-badge::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.5); }
+        }
+        .hero h1 {
+            font-size: clamp(36px, 6vw, 64px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            max-width: 700px;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 520px;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        /* Pipeline Diagram */
+        .pipeline-diagram {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .pipeline-stage {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: var(--transition);
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .pipeline-stage.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .pipeline-stage .icon { font-size: 14px; }
+        .pipeline-arrow {
+            color: var(--text-tertiary);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .pipeline-arrow.visible { opacity: 1; }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .hero-cta:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        /* ============================================================
+           COMPILER INTERFACE
+           ============================================================ */
+        .compiler {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+        .compiler-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .compiler-header h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .compiler-header p {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* Prompt Input */
+        .prompt-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: border-color var(--transition);
+        }
+        .prompt-card:focus-within {
+            border-color: var(--accent);
+        }
+        .prompt-textarea {
+            width: 100%;
+            min-height: 100px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            font-size: 15px;
+            resize: vertical;
+            outline: none;
+            line-height: 1.6;
+        }
+        .prompt-textarea::placeholder { color: var(--text-tertiary); }
+        .prompt-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .example-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .chip {
+            padding: 6px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .chip:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+        .generate-btn {
+            padding: 10px 28px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .generate-btn:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+        .generate-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .generate-btn .spinner {
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: none;
+        }
+        .generate-btn.loading .spinner { display: block; }
+        .generate-btn.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Pipeline Progress Strip */
+        .pipeline-strip {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+        .stage-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 500;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-tertiary);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .stage-badge.running {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            animation: pulse-badge 1.5s infinite;
+        }
+        @keyframes pulse-badge {
+            0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+            50% { box-shadow: 0 0 0 4px transparent; }
+        }
+        .stage-badge.done {
+            border-color: var(--success);
+            color: var(--success);
+            background: rgba(34, 197, 94, 0.1);
+        }
+        .stage-badge.error {
+            border-color: var(--error);
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .stage-badge.repairing {
+            border-color: var(--warning);
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+        }
+        .stage-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Results Layout */
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            display: none;
+        }
+        .results.visible { display: grid; }
+        
+        @media (max-width: 900px) {
+            .results { grid-template-columns: 1fr; }
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .panel-body {
+            padding: 0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        /* Schema Tabs */
+        .schema-tabs {
+            display: flex;
+            gap: 2px;
+            padding: 8px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+        }
+        .schema-tab {
+            padding: 6px 14px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .schema-tab:hover { color: var(--text-secondary); }
+        .schema-tab.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .schema-content {
+            display: none;
+            padding: 16px;
+        }
+        .schema-content.active { display: block; }
+
+        /* JSON Viewer */
+        .json-viewer {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--text-secondary);
+        }
+        .json-viewer .key { color: #818cf8; }
+        .json-viewer .string { color: #34d399; }
+        .json-viewer .number { color: #fb923c; }
+        .json-viewer .boolean { color: #f472b6; }
+        .json-viewer .null { color: var(--text-tertiary); }
+
+        /* Preview iframe */
+        .preview-frame {
+            width: 100%;
+            height: 500px;
+            border: none;
+            background: var(--bg-primary);
+        }
+
+        /* Metrics Row */
+        .metrics-row {
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+            flex-wrap: wrap;
+        }
+        .metric {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        /* Assumptions Panel */
+        .assumption {
+            display: flex;
+            gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .assumption:last-child { border-bottom: none; }
+        .assumption .icon { color: var(--warning); }
+        .assumption .text { color: var(--text-secondary); }
+
+        /* Repair History */
+        .repair-entry {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .repair-entry:last-child { border-bottom: none; }
+        .repair-entry .layer {
+            font-weight: 600;
+            color: var(--warning);
+        }
+        .repair-entry .fix {
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Test Results */
+        .test-result {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .test-result:last-child { border-bottom: none; }
+        .test-pass { color: var(--success); }
+        .test-fail { color: var(--error); }
+
+        /* Event Log */
+        .event-log {
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            display: flex;
+            gap: 10px;
+            padding: 6px 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(39,39,42,0.5);
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-time {
+            color: var(--text-tertiary);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 24px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+    </style>
+</head>
+<body>
+
+    <!-- ========== HERO ========== -->
+    <section class="hero" id="hero">
+        <div class="hero-badge">
+            <span>Compiler v1.0</span>
+        </div>
+        <h1>Natural Language → <span class="accent">Working App</span></h1>
+        <p class="subtitle">
+            iWebify is a compiler, not a code generator. Describe your app, get validated schemas and a running preview — no black box.
+        </p>
+        <div class="pipeline-diagram" id="pipeline-diagram">
+            <div class="pipeline-stage" data-delay="0"><span class="icon">📝</span> Intent</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="100"><span class="icon">🏗️</span> Design</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="200"><span class="icon">🗄️</span> DB</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="300"><span class="icon">🔌</span> API</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="400"><span class="icon">🔐</span> Auth</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="500"><span class="icon">⚙️</span> Logic</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="600"><span class="icon">🎨</span> UI</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="700"><span class="icon">✅</span> Validate</div>
+            <span class="pipeline-arrow">→</span>
+            <div class="pipeline-stage" data-delay="800"><span class="icon">🚀</span> Execute</div>
+        </div>
+        <button class="hero-cta" onclick="document.getElementById('compiler').scrollIntoView({behavior:'smooth'})">
+            Try it now ↓
+        </button>
+    </section>
+
+    <!-- ========== COMPILER INTERFACE ========== -->
+    <section class="compiler" id="compiler">
+        <div class="compiler-header">
+            <h2>Compiler Interface</h2>
+            <p>Describe your application. iWebify compiles it into validated, executable schemas.</p>
+        </div>
+
+        <!-- Prompt Input -->
+        <div class="prompt-card">
+            <textarea class="prompt-textarea" id="prompt-input" placeholder="Describe the app you want to build...
+
+Example: Build a CRM with contacts, companies, and deals. Users should be able to track interactions, set reminders, and view a dashboard. Admin and sales rep roles."></textarea>
+            <div class="prompt-footer">
+                <div class="example-chips">
+                    <span class="chip" onclick="setPrompt('crm')">CRM with contacts & deals</span>
+                    <span class="chip" onclick="setPrompt('ecommerce')">E-commerce store</span>
+                    <span class="chip" onclick="setPrompt('project')">Project management</span>
+                    <span class="chip" onclick="setPrompt('healthcare')">Healthcare appointments</span>
+                </div>
+                <button class="generate-btn" id="generate-btn" onclick="startGeneration()">
+                    <div class="spinner"></div>
+                    <span class="btn-text">⚡ Compile</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Pipeline Strip -->
+        <div class="pipeline-strip" id="pipeline-strip">
+            <div class="stage-badge" data-stage="intent_extraction"><span class="stage-dot"></span> Intent</div>
+            <div class="stage-badge" data-stage="system_design"><span class="stage-dot"></span> Design</div>
+            <div class="stage-badge" data-stage="db_schema"><span class="stage-dot"></span> DB</div>
+            <div class="stage-badge" data-stage="api_schema"><span class="stage-dot"></span> API</div>
+            <div class="stage-badge" data-stage="auth_schema"><span class="stage-dot"></span> Auth</div>
+            <div class="stage-badge" data-stage="business_schema"><span class="stage-dot"></span> Logic</div>
+            <div class="stage-badge" data-stage="ui_schema"><span class="stage-dot"></span> UI</div>
+            <div class="stage-badge" data-stage="validation"><span class="stage-dot"></span> Validate</div>
+            <div class="stage-badge" data-stage="repair"><span class="stage-dot"></span> Repair</div>
+            <div class="stage-badge" data-stage="execution"><span class="stage-dot"></span> Execute</div>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <!-- Left Column: Schemas + Assumptions + Repair + Log -->
+            <div>
+                <!-- Schema Inspector -->
+                <div class="panel" style="margin-bottom: 24px">
+                    <div class="panel-header">
+                        <span class="panel-title">Schema Inspector</span>
+                    </div>
+                    <div class="schema-tabs">
+                        <button class="schema-tab active" onclick="showSchema('intent')">Intent</button>
+                        <button class="schema-tab" onclick="showSchema('design')">Design</button>
+                        <button class="schema-tab" onclick="showSchema('db')">DB</button>
+                        <button class="schema-tab" onclick="showSchema('api')">API</button>
+                        <button class="schema-tab" onclick="showSchema('auth')">Auth</button>
+                        <button class="schema-tab" onclick="showSchema('business')">Business</button>
+                        <button class="schema-tab" onclick="showSchema('ui')">UI</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="schema-content active" id="schema-intent"><pre class="json-viewer">Waiting for compilation...</pre></div>
+                        <div class="schema-content" id="schema-design"><pre class="json-viewer"></pre></div>
+                        <div class="schema-content" id="schema-db"><pre class="json-viewer"></pre></div>
+                        <div class="schema-content" id="schema-api"><pre class="json-viewer"></pre></div>
+                        <div class="schema-content" id="schema-auth"><pre class="json-viewer"></pre></div>
+                        <div class="schema-content" id="schema-business"><pre class="json-viewer"></pre></div>
+                        <div class="schema-content" id="schema-ui"><pre class="json-viewer"></pre></div>
+                    </div>
+                </div>
+
+                <!-- Assumptions -->
+                <div class="panel" style="margin-bottom: 24px">
+                    <div class="panel-header">
+                        <span class="panel-title">⚡ Assumptions & Decisions</span>
+                    </div>
+                    <div class="panel-body" id="assumptions-panel">
+                        <div class="assumption"><span class="text" style="color: var(--text-tertiary)">No assumptions yet</span></div>
+                    </div>
+                </div>
+
+                <!-- Repair History -->
+                <div class="panel" style="margin-bottom: 24px">
+                    <div class="panel-header">
+                        <span class="panel-title">🔧 Repair History</span>
+                    </div>
+                    <div class="panel-body" id="repair-panel">
+                        <div class="repair-entry"><span class="fix" style="color: var(--text-tertiary)">No repairs needed</span></div>
+                    </div>
+                </div>
+
+                <!-- Event Log -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">📋 Event Log</span>
+                    </div>
+                    <div class="event-log" id="event-log"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Preview + Tests + Metrics -->
+            <div>
+                <!-- Live Preview -->
+                <div class="panel" style="margin-bottom: 24px">
+                    <div class="panel-header">
+                        <span class="panel-title">🖥️ Live Preview</span>
+                        <button class="chip" id="download-btn" style="display:none" onclick="downloadSchemas()">⬇ Download JSON</button>
+                    </div>
+                    <div class="panel-body">
+                        <iframe class="preview-frame" id="preview-frame" src="about:blank"></iframe>
+                    </div>
+                </div>
+
+                <!-- Smoke Tests -->
+                <div class="panel" style="margin-bottom: 24px">
+                    <div class="panel-header">
+                        <span class="panel-title">🧪 Smoke Tests</span>
+                    </div>
+                    <div class="panel-body" id="tests-panel">
+                        <div class="test-result"><span style="color: var(--text-tertiary)">Tests will run after execution</span></div>
+                    </div>
+                </div>
+
+                <!-- Metrics -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">📊 Pipeline Metrics</span>
+                    </div>
+                    <div class="metrics-row" id="metrics-row">
+                        <div class="metric">
+                            <div class="metric-value" id="metric-time">—</div>
+                            <div class="metric-label">Total Time</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value" id="metric-retries">0</div>
+                            <div class="metric-label">Retries</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value" id="metric-tables">—</div>
+                            <div class="metric-label">Tables</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value" id="metric-endpoints">—</div>
+                            <div class="metric-label">Endpoints</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        Built with iWebify — a compiler-mediated approach to software generation.
+    </footer>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+        // ============================================================
+        // STATE
+        // ============================================================
+        let currentSessionId = null;
+        let eventSource = null;
+        let startTime = null;
+
+        const EXAMPLES = {
+            crm: "Build a CRM with contacts, companies, and deals. Users can track interactions, set reminders, and view a dashboard with sales pipeline metrics. Admin and sales rep roles.",
+            ecommerce: "Create an e-commerce store with products, categories, shopping cart, order management, and Stripe checkout. Admin manages inventory, customers browse and buy. Include order tracking.",
+            project: "Build a project management tool like Trello. Teams create boards with lists and cards. Cards have assignees, due dates, labels, and comments. Team admin and member roles.",
+            healthcare: "Healthcare appointment booking system. Patients browse doctors by specialty, book appointments, view medical history. Doctors manage schedules and view patient records."
+        };
+
+        // ============================================================
+        // HERO ANIMATION
+        // ============================================================
+        function animateHero() {
+            const stages = document.querySelectorAll('.pipeline-stage');
+            const arrows = document.querySelectorAll('.pipeline-arrow');
+            stages.forEach((stage, i) => {
+                setTimeout(() => {
+                    stage.classList.add('visible');
+                    if (arrows[i]) arrows[i].classList.add('visible');
+                }, parseInt(stage.dataset.delay) + 300);
+            });
+        }
+        window.addEventListener('load', animateHero);
+
+        // ============================================================
+        // PROMPT HELPERS
+        // ============================================================
+        function setPrompt(key) {
+            document.getElementById('prompt-input').value = EXAMPLES[key] || '';
+        }
+
+        // ============================================================
+        // GENERATION
+        // ============================================================
+        async function startGeneration() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            if (!prompt) return;
+
+            const btn = document.getElementById('generate-btn');
+            btn.classList.add('loading');
+            btn.disabled = true;
+            startTime = Date.now();
+
+            // Reset UI
+            resetUI();
+            document.getElementById('results').classList.add('visible');
+
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, mode: 'generate' })
+                });
+                const data = await res.json();
+                currentSessionId = data.session_id;
+                connectSSE(currentSessionId);
+            } catch (err) {
+                addLog('❌ Failed to start: ' + err.message);
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        function resetUI() {
+            // Reset stage badges
+            document.querySelectorAll('.stage-badge').forEach(b => {
+                b.className = 'stage-badge';
+            });
+            // Reset event log
+            document.getElementById('event-log').innerHTML = '';
+            // Reset panels
+            document.getElementById('assumptions-panel').innerHTML = '';
+            document.getElementById('repair-panel').innerHTML = '';
+            document.getElementById('tests-panel').innerHTML = '';
+            document.getElementById('preview-frame').src = 'about:blank';
+            document.getElementById('download-btn').style.display = 'none';
+            // Reset metrics
+            document.getElementById('metric-time').textContent = '—';
+            document.getElementById('metric-retries').textContent = '0';
+            document.getElementById('metric-tables').textContent = '—';
+            document.getElementById('metric-endpoints').textContent = '—';
+        }
+
+        // ============================================================
+        // SSE CONNECTION
+        // ============================================================
+        function connectSSE(sessionId) {
+            if (eventSource) eventSource.close();
+            eventSource = new EventSource(`/api/stream/${sessionId}`);
+
+            eventSource.addEventListener('stage_start', (e) => {
+                const data = JSON.parse(e.data);
+                updateBadge(data.stage, 'running');
+                addLog(data.message);
+            });
+
+            eventSource.addEventListener('stage_complete', (e) => {
+                const data = JSON.parse(e.data);
+                updateBadge(data.stage, 'done');
+                addLog(data.message + (data.duration ? ` (${data.duration}s)` : ''));
+            });
+
+            eventSource.addEventListener('stage_error', (e) => {
+                const data = JSON.parse(e.data);
+                updateBadge(data.stage, 'error');
+                addLog(data.message);
+            });
+
+            eventSource.addEventListener('repair_start', (e) => {
+                const data = JSON.parse(e.data);
+                updateBadge('repair', 'repairing');
+                addLog(data.message);
+            });
+
+            eventSource.addEventListener('repair_complete', (e) => {
+                const data = JSON.parse(e.data);
+                updateBadge('repair', 'done');
+                addLog(data.message);
+            });
+
+            eventSource.addEventListener('repair_skip', (e) => {
+                const data = JSON.parse(e.data);
+                addLog(data.message);
+            });
+
+            eventSource.addEventListener('execution_step', (e) => {
+                const data = JSON.parse(e.data);
+                addLog(data.message);
+            });
+
+            eventSource.addEventListener('done', (e) => {
+                const data = JSON.parse(e.data);
+                addLog(data.message);
+                loadResults(sessionId);
+            });
+
+            eventSource.addEventListener('pipeline_error', (e) => {
+                const data = JSON.parse(e.data);
+                addLog('❌ ' + (data.message || 'Pipeline error'));
+                finishUI();
+            });
+
+            eventSource.addEventListener('pipeline_status', (e) => {
+                const data = JSON.parse(e.data);
+                if (data.status === 'complete') {
+                    loadResults(sessionId);
+                } else if (data.status === 'error') {
+                    addLog('❌ Pipeline error: ' + (data.error || 'Unknown').substring(0, 200));
+                    finishUI();
+                }
+                eventSource.close();
+            });
+
+            eventSource.onerror = () => {
+                // SSE connection closed — try loading results
+                setTimeout(() => loadResults(sessionId), 1000);
+            };
+        }
+
+        // ============================================================
+        // UI UPDATES
+        // ============================================================
+        function updateBadge(stage, status) {
+            const badge = document.querySelector(`.stage-badge[data-stage="${stage}"]`);
+            if (badge) {
+                badge.className = `stage-badge ${status}`;
+            }
+        }
+
+        function addLog(message) {
+            const log = document.getElementById('event-log');
+            const elapsed = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) + 's' : '';
+            log.innerHTML += `<div class="log-entry"><span class="log-time">${elapsed}</span><span>${message}</span></div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function finishUI() {
+            document.getElementById('generate-btn').classList.remove('loading');
+            document.getElementById('generate-btn').disabled = false;
+        }
+
+        // ============================================================
+        // LOAD RESULTS
+        // ============================================================
+        async function loadResults(sessionId) {
+            try {
+                const res = await fetch(`/api/result/${sessionId}`);
+                const data = await res.json();
+
+                if (data.status !== 'complete') {
+                    if (data.status === 'running') {
+                        setTimeout(() => loadResults(sessionId), 1000);
+                        return;
+                    }
+                    finishUI();
+                    return;
+                }
+
+                const result = data.result;
+
+                // Populate schema inspector
+                setSchemaJSON('intent', result.intent);
+                setSchemaJSON('design', result.design);
+                setSchemaJSON('db', result.db_schema);
+                setSchemaJSON('api', result.api_schema);
+                setSchemaJSON('auth', result.auth_schema);
+                setSchemaJSON('business', result.business_schema);
+                setSchemaJSON('ui', result.ui_schema);
+
+                // Assumptions
+                const assumptions = result.intent?.assumptions || [];
+                const apanel = document.getElementById('assumptions-panel');
+                if (assumptions.length > 0) {
+                    apanel.innerHTML = assumptions.map(a =>
+                        `<div class="assumption"><span class="icon">💡</span><span class="text">${escapeHtml(a)}</span></div>`
+                    ).join('');
+                }
+
+                // Repair history
+                const repairs = result.repair_history || [];
+                const rpanel = document.getElementById('repair-panel');
+                if (repairs.length > 0) {
+                    rpanel.innerHTML = repairs.map(r =>
+                        `<div class="repair-entry">
+                            <span class="layer">${r.layer}</span> (attempt ${r.attempt})
+                            <div class="fix">${r.errors_fixed?.map(e => '• ' + escapeHtml(e)).join('<br>') || ''}</div>
+                        </div>`
+                    ).join('');
+                }
+
+                // Test results
+                const tests = result.test_results || [];
+                const tpanel = document.getElementById('tests-panel');
+                if (tests.length > 0) {
+                    tpanel.innerHTML = tests.map(t =>
+                        `<div class="test-result">
+                            <span class="${t.passed ? 'test-pass' : 'test-fail'}">${t.passed ? '✅' : '❌'}</span>
+                            <span>${escapeHtml(t.details || t.test_name)}</span>
+                        </div>`
+                    ).join('');
+                }
+
+                // Metrics
+                const totalTime = Object.values(result.stage_timings || {}).reduce((a, b) => a + b, 0);
+                document.getElementById('metric-time').textContent = totalTime.toFixed(1) + 's';
+                document.getElementById('metric-retries').textContent = result.total_retries || 0;
+                document.getElementById('metric-tables').textContent = result.db_schema?.tables?.length || 0;
+                document.getElementById('metric-endpoints').textContent = result.api_schema?.endpoints?.length || 0;
+
+                // Preview
+                const previewUrl = result.execution_result?.preview_url;
+                if (previewUrl) {
+                    document.getElementById('preview-frame').src = previewUrl;
+                }
+
+                // Download button
+                document.getElementById('download-btn').style.display = '';
+
+                finishUI();
+
+            } catch (err) {
+                addLog('⚠️ Failed to load results: ' + err.message);
+                finishUI();
+            }
+        }
+
+        // ============================================================
+        // SCHEMA VIEWER
+        // ============================================================
+        function showSchema(name) {
+            document.querySelectorAll('.schema-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.schema-content').forEach(c => c.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById('schema-' + name).classList.add('active');
+        }
+
+        function setSchemaJSON(name, data) {
+            const el = document.querySelector(`#schema-${name} .json-viewer`);
+            if (el && data) {
+                el.innerHTML = syntaxHighlight(JSON.stringify(data, null, 2));
+            }
+        }
+
+        function syntaxHighlight(json) {
+            json = escapeHtml(json);
+            return json.replace(
+                /("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,
+                function (match) {
+                    let cls = 'number';
+                    if (/^"/.test(match)) {
+                        cls = /:$/.test(match) ? 'key' : 'string';
+                    } else if (/true|false/.test(match)) {
+                        cls = 'boolean';
+                    } else if (/null/.test(match)) {
+                        cls = 'null';
+                    }
+                    return '<span class="' + cls + '">' + match + '</span>';
+                }
+            );
+        }
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // ============================================================
+        // DOWNLOAD
+        // ============================================================
+        function downloadSchemas() {
+            if (currentSessionId) {
+                window.open(`/api/download/${currentSessionId}`, '_blank');
+            }
+        }
+    </script>
+</body>
+</html>
