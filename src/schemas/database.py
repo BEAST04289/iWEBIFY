@@ -4,6 +4,7 @@ Generated FIRST in the sequential dependency chain.
 All other schemas build on this. DB schema is NEVER modified by repair —
 it is the single source of truth.
 """
+from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Literal
 

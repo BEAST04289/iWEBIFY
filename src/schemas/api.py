@@ -4,6 +4,7 @@ Generated SECOND, given the DB schema as context.
 Every endpoint must reference a real DB table. Request/response fields
 must match DB column names exactly.
 """
+from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Literal
 

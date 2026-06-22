@@ -3,6 +3,7 @@
 Converts the IntentIR into a concrete architectural blueprint:
 entity relationships, data flows, auth strategy, storage decisions.
 """
+from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Literal
 

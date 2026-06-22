@@ -3,6 +3,7 @@
 Generated FOURTH, given DB + API + Auth schemas as context.
 Every affected_endpoint must be an exact path from APISchema.
 """
+from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Literal
 

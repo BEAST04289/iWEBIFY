@@ -4,6 +4,7 @@ Depends on ALL other schemas. Every api_endpoint must be an exact
 path from APISchema. Every allowed_role must exist in AuthSchema.
 Every field must map to real response_fields from the referenced endpoint.
 """
+from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Literal
 

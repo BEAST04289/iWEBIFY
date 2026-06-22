@@ -4,6 +4,7 @@ Generated THIRD, given DB + API schemas as context.
 Roles must match IntentIR roles. Protected/public endpoints must
 be exact paths from the API schema.
 """
+from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Literal
 

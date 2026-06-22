@@ -3,6 +3,7 @@
 In production this would be Redis. For the demo, a simple dict suffices.
 Each session_id maps to its events, status, and final result.
 """
+from __future__ import annotations
 from typing import Any
 
 # In-memory store: session_id -> session data
