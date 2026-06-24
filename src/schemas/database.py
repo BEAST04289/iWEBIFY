@@ -5,7 +5,7 @@ All other schemas build on this. DB schema is NEVER modified by repair —
 it is the single source of truth.
 """
 from __future__ import annotations
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Literal
 
 
@@ -27,6 +27,15 @@ class DBColumn(BaseModel):
     enum_values: list[str] | None = Field(
         default=None, description="Allowed values when type is 'enum'"
     )
+
+    @field_validator("default", mode="before")
+    @classmethod
+    def coerce_default_to_str(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        return str(v)
 
 
 class DBTable(BaseModel):

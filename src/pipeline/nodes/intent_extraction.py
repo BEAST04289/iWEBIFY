@@ -4,13 +4,10 @@ Parses a natural language prompt into a structured IntentIR.
 Uses Gemini's response_schema for guaranteed valid output.
 """
 import time
-from google import genai
-from google.genai import types
-
-from src.config import GEMINI_API_KEY, MODEL_NAME, TEMPERATURE
 from src.schemas.intent import IntentIR
 from src.pipeline.state import PipelineState
-
+from src.utils import clean_json
+from src.llm import generate_json_with_fallback, generate_validated_model
 
 INTENT_SYSTEM_PROMPT = """You are the intent extraction stage of an AI app compiler called iWebify.
 
@@ -51,21 +48,18 @@ def intent_extraction(state: PipelineState) -> dict:
     
     start = time.time()
     
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    
-    prompt = f"{INTENT_SYSTEM_PROMPT}\n\nUser prompt:\n{state['user_prompt']}"
-    
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=IntentIR,
-            temperature=TEMPERATURE,
-        ),
+    import json
+    schema_def = json.dumps(IntentIR.model_json_schema(), indent=2)
+    prompt = (
+        f"{INTENT_SYSTEM_PROMPT}\n\n"
+        f"User prompt:\n{state['user_prompt']}\n\n"
+        f"REQUIRED JSON SCHEMA:\n{schema_def}\n\n"
+        "Return ONLY a valid JSON object INSTANCE that complies with this schema.\n"
+        "Do NOT return the JSON schema definition itself. No markdown, no explanation."
     )
     
-    intent: IntentIR = response.parsed
+    intent = generate_validated_model(prompt, IntentIR)
+        
     elapsed = round(time.time() - start, 2)
     
     events.append({

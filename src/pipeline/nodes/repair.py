@@ -8,15 +8,20 @@ CRITICAL ARCHITECTURE:
 - temperature=0.0 for repair (maximum determinism).
 """
 import time
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
-from src.config import GEMINI_API_KEY, MODEL_NAME, REPAIR_TEMPERATURE, MAX_REPAIR_ATTEMPTS
+from src.config import settings
 from src.schemas.api import APISchema
 from src.schemas.auth import AuthSchema
 from src.schemas.business import BusinessLogicSchema
 from src.schemas.ui import UISchema
 from src.pipeline.state import PipelineState
+from src.utils import clean_json
+
+client = OpenAI(
+    api_key=settings.OPENROUTER_API_KEY,
+    base_url=settings.OPENROUTER_BASE_URL,
+)
 
 
 # Repair prompt template — injected with specific errors and ground truth
@@ -96,8 +101,6 @@ def repair(state: PipelineState) -> dict:
         "message": f"🔧 Repairing {len(errors_by_layer)} broken layers: {', '.join(errors_by_layer.keys())}",
     })
     
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    
     # Repair each layer in downstream order
     updates = {}
     for layer in LAYER_ORDER:
@@ -107,11 +110,11 @@ def repair(state: PipelineState) -> dict:
         layer_errors = errors_by_layer[layer]
         attempt = repair_attempts.get(layer, 0) + 1
         
-        if attempt > MAX_REPAIR_ATTEMPTS:
+        if attempt > settings.MAX_REPAIR_ATTEMPTS:
             events.append({
                 "type": "repair_skip",
                 "stage": "repair",
-                "message": f"⏭️ Skipping {layer} — exceeded {MAX_REPAIR_ATTEMPTS} repair attempts",
+                "message": f"⏭️ Skipping {layer} — exceeded {settings.MAX_REPAIR_ATTEMPTS} repair attempts",
             })
             continue
         
@@ -127,25 +130,29 @@ def repair(state: PipelineState) -> dict:
         )
         
         current_schema = state[layer]
-        prompt = REPAIR_PROMPT.format(
+        base_prompt = REPAIR_PROMPT.format(
             layer_name=layer,
             errors=error_text,
             current_schema=current_schema.model_dump_json(indent=2),
             ground_truth=_get_ground_truth(state, layer),
         )
+        prompt = f"{base_prompt}\n\nYou must return valid JSON matching the {layer} schema."
         
         try:
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=LAYER_MODELS[layer],
-                    temperature=REPAIR_TEMPERATURE,
-                ),
+            response = client.chat.completions.create(
+                model=settings.REPAIR_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.0,
             )
-            
-            repaired = response.parsed
+            raw = response.choices[0].message.content
+            if not raw:
+                raise ValueError("OpenRouter returned empty response")
+            try:
+                repaired = LAYER_MODELS[layer].model_validate_json(clean_json(raw))
+            except Exception as e:
+                raise ValueError(f"Repair parse failed: {e}\nRaw: {raw[:300]}")
+                
             elapsed = round(time.time() - start, 2)
             
             # Record repair history

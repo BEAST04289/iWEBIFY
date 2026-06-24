@@ -1,0 +1,102 @@
+[
+  {
+    "id": "real_1",
+    "type": "real",
+    "prompt": "Build a CRM with login, contacts, dashboard, role-based access, and premium plan with payments. Admins can see analytics."
+  },
+  {
+    "id": "real_2",
+    "type": "real",
+    "prompt": "Create an e-commerce store selling digital assets. Users can browse products, add to cart, and checkout via Stripe. Needs an admin panel to manage inventory."
+  },
+  {
+    "id": "real_3",
+    "type": "real",
+    "prompt": "Build a project management tool like Trello. Workspaces contain Boards, which contain Lists, which contain Cards. Users can drag and drop cards. Include user roles."
+  },
+  {
+    "id": "real_4",
+    "type": "real",
+    "prompt": "I need a healthcare patient portal. Doctors can upload lab results, and patients can log in to view them. Include a secure messaging system between doctors and patients."
+  },
+  {
+    "id": "real_5",
+    "type": "real",
+    "prompt": "Create a real estate listing platform. Agents can post properties with images, price, and location. Users can search and filter properties and contact agents."
+  },
+  {
+    "id": "real_6",
+    "type": "real",
+    "prompt": "Build a restaurant reservation system. Customers can pick a date, time, and party size. Restaurant managers can see upcoming bookings and block off tables."
+  },
+  {
+    "id": "real_7",
+    "type": "real",
+    "prompt": "Develop a learning management system (LMS). Teachers upload courses and video lessons. Students enroll, track progress, and take quizzes."
+  },
+  {
+    "id": "real_8",
+    "type": "real",
+    "prompt": "Build a simple social network for dog owners. Users create profiles for their dogs, post photos, and follow other dogs. Include a feed of recent posts."
+  },
+  {
+    "id": "real_9",
+    "type": "real",
+    "prompt": "I need an inventory tracking app for a warehouse. Workers can scan barcodes to increment or decrement stock levels. Managers get alerts when stock is low."
+  },
+  {
+    "id": "real_10",
+    "type": "real",
+    "prompt": "Create a SaaS for podcast hosting. Users can upload audio files, add show notes, and generate an RSS feed. Premium users get advanced analytics on listeners."
+  },
+  {
+    "id": "edge_1",
+    "type": "vague",
+    "prompt": "Make an app that does things with data."
+  },
+  {
+    "id": "edge_2",
+    "type": "conflicting",
+    "prompt": "Build a completely anonymous chat app where users don't need accounts, but admins need to be able to ban users based on their account ID and email address."
+  },
+  {
+    "id": "edge_3",
+    "type": "incomplete",
+    "prompt": "Dashboard."
+  },
+  {
+    "id": "edge_4",
+    "type": "vague",
+    "prompt": "I want an app like Uber but for dog walking."
+  },
+  {
+    "id": "edge_5",
+    "type": "conflicting",
+    "prompt": "A totally free open-source app that charges users $10/month to log in."
+  },
+  {
+    "id": "edge_6",
+    "type": "incomplete",
+    "prompt": "Store for selling shoes."
+  },
+  {
+    "id": "edge_7",
+    "type": "vague",
+    "prompt": "Need something to manage my life and habits and money and friends."
+  },
+  {
+    "id": "edge_8",
+    "type": "conflicting",
+    "prompt": "An offline-only web app that syncs data across multiple devices instantly."
+  },
+  {
+    "id": "edge_9",
+    "type": "incomplete",
+    "prompt": "A login page."
+  },
+  {
+    "id": "edge_10",
+    "type": "vague",
+    "prompt": "Make the ultimate AI application that does everything automatically."
+  }
+]

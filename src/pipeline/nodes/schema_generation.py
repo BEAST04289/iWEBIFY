@@ -11,16 +11,15 @@ Order:
   3e. UI Schema — given everything above
 """
 import time
-from google import genai
-from google.genai import types
-
-from src.config import GEMINI_API_KEY, MODEL_NAME, TEMPERATURE
 from src.schemas.database import DBSchema
 from src.schemas.api import APISchema
 from src.schemas.auth import AuthSchema
 from src.schemas.business import BusinessLogicSchema
 from src.schemas.ui import UISchema
 from src.pipeline.state import PipelineState
+from src.utils import clean_json, coerce_api_types
+from src.llm import generate_json_with_fallback
+import json
 
 
 # ============================================================
@@ -54,7 +53,7 @@ API_PROMPT = """You are the API SCHEMA generator of an AI app compiler.
 Generate a complete REST API schema from the database schema.
 
 STRICT RULES:
-1. Every DB table should have standard CRUD endpoints: GET (list), GET/{id}, POST, PUT/{id}, DELETE/{id}.
+1. Every DB table should have standard CRUD endpoints: GET (list), GET/{{id}}, POST, PUT/{{id}}, DELETE/{{id}}.
 2. EVERY endpoint's db_table MUST be an EXACT table name from the DB schema provided below.
 3. EVERY field in request_body and response_fields MUST EXACTLY MATCH a column name from that DB table.
 4. Use /api/ prefix for all paths.
@@ -155,11 +154,6 @@ Original Intent:
 {intent}"""
 
 
-def _make_client():
-    """Create a Gemini client."""
-    return genai.Client(api_key=GEMINI_API_KEY)
-
-
 def _format_db_tables(db_schema: DBSchema) -> str:
     """Format DB tables for injection into prompts."""
     lines = []
@@ -216,24 +210,22 @@ def generate_db_schema(state: PipelineState) -> dict:
     })
     
     start = time.time()
-    client = _make_client()
     
-    prompt = DB_PROMPT.format(
+    base_prompt = DB_PROMPT.format(
         design=state["design"].model_dump_json(indent=2),
         intent=state["intent"].model_dump_json(indent=2),
     )
-    
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=DBSchema,
-            temperature=TEMPERATURE,
-        ),
+    schema_def = json.dumps(DBSchema.model_json_schema(), indent=2)
+    prompt = (
+        f"{base_prompt}\n\n"
+        f"REQUIRED JSON SCHEMA:\n{schema_def}\n\n"
+        "Return ONLY a valid JSON object INSTANCE that complies with this schema.\n"
+        "Do NOT return the JSON schema definition itself. No markdown, no explanation."
     )
     
-    db_schema: DBSchema = response.parsed
+    from src.llm import generate_validated_model
+    db_schema = generate_validated_model(prompt, DBSchema)
+        
     elapsed = round(time.time() - start, 2)
     
     table_names = [t.name for t in db_schema.tables]
@@ -270,25 +262,41 @@ def generate_api_schema(state: PipelineState) -> dict:
     })
     
     start = time.time()
-    client = _make_client()
     
-    prompt = API_PROMPT.format(
+    base_prompt = API_PROMPT.format(
         db_tables=_format_db_tables(state["db_schema"]),
         design=state["design"].model_dump_json(indent=2),
         intent=state["intent"].model_dump_json(indent=2),
     )
-    
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=APISchema,
-            temperature=TEMPERATURE,
-        ),
+    schema_def = json.dumps(APISchema.model_json_schema(), indent=2)
+    prompt = (
+        f"{base_prompt}\n\n"
+        f"REQUIRED JSON SCHEMA:\n{schema_def}\n\n"
+        "Return ONLY a valid JSON object INSTANCE that complies with this schema.\n"
+        "Do NOT return the JSON schema definition itself. No markdown, no explanation."
     )
     
-    api_schema: APISchema = response.parsed
+    from src.llm import generate_validated_model
+    # For API schema we still need type coercion before final validation
+    raw_json = generate_json_with_fallback(prompt)
+    import json as _json
+    from pydantic import ValidationError
+    repairs = 0
+    max_repairs = 3
+    while repairs < max_repairs:
+        try:
+            raw_clean = clean_json(raw_json)
+            raw_dict = _json.loads(raw_clean)
+            raw_dict = coerce_api_types(raw_dict)
+            api_schema = APISchema.model_validate(_json.loads(_json.dumps(raw_dict)))
+            break
+        except Exception as e:
+            repairs += 1
+            if repairs >= max_repairs:
+                raise ValueError(f"API Schema validation failed after repairs: {e}")
+            repair_prompt = f"Validation failed:\n{str(e)}\n\nFix JSON:\n{raw_json}\n\nRules:\n{prompt}"
+            raw_json = generate_json_with_fallback(repair_prompt)
+        
     elapsed = round(time.time() - start, 2)
     
     events.append({
@@ -324,25 +332,23 @@ def generate_auth_schema(state: PipelineState) -> dict:
     })
     
     start = time.time()
-    client = _make_client()
     
-    prompt = AUTH_PROMPT.format(
+    base_prompt = AUTH_PROMPT.format(
         api_endpoints=_format_api_endpoints(state["api_schema"]),
         db_tables=_format_db_tables(state["db_schema"]),
         intent=state["intent"].model_dump_json(indent=2),
     )
-    
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=AuthSchema,
-            temperature=TEMPERATURE,
-        ),
+    schema_def = json.dumps(AuthSchema.model_json_schema(), indent=2)
+    prompt = (
+        f"{base_prompt}\n\n"
+        f"REQUIRED JSON SCHEMA:\n{schema_def}\n\n"
+        "Return ONLY a valid JSON object INSTANCE that complies with this schema.\n"
+        "Do NOT return the JSON schema definition itself. No markdown, no explanation."
     )
     
-    auth_schema: AuthSchema = response.parsed
+    from src.llm import generate_validated_model
+    auth_schema = generate_validated_model(prompt, AuthSchema)
+        
     elapsed = round(time.time() - start, 2)
     
     role_names = [r.name for r in auth_schema.roles]
@@ -379,26 +385,24 @@ def generate_business_schema(state: PipelineState) -> dict:
     })
     
     start = time.time()
-    client = _make_client()
     
-    prompt = BUSINESS_PROMPT.format(
+    base_prompt = BUSINESS_PROMPT.format(
         api_endpoints=_format_api_endpoints(state["api_schema"]),
         auth_roles=_format_auth_roles(state["auth_schema"]),
         db_tables=_format_db_tables(state["db_schema"]),
         intent=state["intent"].model_dump_json(indent=2),
     )
-    
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=BusinessLogicSchema,
-            temperature=TEMPERATURE,
-        ),
+    schema_def = json.dumps(BusinessLogicSchema.model_json_schema(), indent=2)
+    prompt = (
+        f"{base_prompt}\n\n"
+        f"REQUIRED JSON SCHEMA:\n{schema_def}\n\n"
+        "Return ONLY a valid JSON object INSTANCE that complies with this schema.\n"
+        "Do NOT return the JSON schema definition itself. No markdown, no explanation."
     )
     
-    biz_schema: BusinessLogicSchema = response.parsed
+    from src.llm import generate_validated_model
+    biz_schema = generate_validated_model(prompt, BusinessLogicSchema)
+        
     elapsed = round(time.time() - start, 2)
     
     events.append({
@@ -434,26 +438,24 @@ def generate_ui_schema(state: PipelineState) -> dict:
     })
     
     start = time.time()
-    client = _make_client()
     
-    prompt = UI_PROMPT.format(
+    base_prompt = UI_PROMPT.format(
         api_details=_format_api_details(state["api_schema"]),
         auth_roles=_format_auth_roles(state["auth_schema"]),
         db_tables=_format_db_tables(state["db_schema"]),
         intent=state["intent"].model_dump_json(indent=2),
     )
-    
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=UISchema,
-            temperature=TEMPERATURE,
-        ),
+    schema_def = json.dumps(UISchema.model_json_schema(), indent=2)
+    prompt = (
+        f"{base_prompt}\n\n"
+        f"REQUIRED JSON SCHEMA:\n{schema_def}\n\n"
+        "Return ONLY a valid JSON object INSTANCE that complies with this schema.\n"
+        "Do NOT return the JSON schema definition itself. No markdown, no explanation."
     )
     
-    ui_schema: UISchema = response.parsed
+    from src.llm import generate_validated_model
+    ui_schema = generate_validated_model(prompt, UISchema)
+        
     elapsed = round(time.time() - start, 2)
     
     page_names = [p.title for p in ui_schema.pages]

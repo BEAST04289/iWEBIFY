@@ -4,13 +4,10 @@ Converts IntentIR into a concrete architectural blueprint.
 Defines entity relationships, data flows, auth strategy.
 """
 import time
-from google import genai
-from google.genai import types
-
-from src.config import GEMINI_API_KEY, MODEL_NAME, TEMPERATURE
 from src.schemas.design import SystemDesign
 from src.pipeline.state import PipelineState
-
+from src.utils import clean_json
+from src.llm import generate_json_with_fallback
 
 DESIGN_SYSTEM_PROMPT = """You are the system design stage of an AI app compiler called iWebify.
 
@@ -20,7 +17,7 @@ Rules:
 1. Confirm and refine entity names — use snake_case plural for table names (e.g., 'users', 'contacts').
 2. Define ALL entity relationships with correct cardinality (one_to_one, one_to_many, many_to_many).
 3. For many_to_many, include the junction table as an entity.
-4. Define key data flows — how data moves between components.
+4. Define key data flows — how data movement happens between components.
 5. Choose auth_strategy based on the app type (jwt for APIs, session for web apps).
 6. Set payment_provider only if has_payments is true.
 7. storage_strategy should be 'sqlite_per_session' (our execution layer uses SQLite).
@@ -48,25 +45,20 @@ def system_design(state: PipelineState) -> dict:
     start = time.time()
     intent = state["intent"]
     
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    
     # Context isolation: only pass what this stage needs
+    import json
+    schema_def = json.dumps(SystemDesign.model_json_schema(), indent=2)
     prompt = (
         f"{DESIGN_SYSTEM_PROMPT}\n\n"
-        f"Extracted Intent:\n{intent.model_dump_json(indent=2)}"
+        f"Extracted Intent:\n{intent.model_dump_json(indent=2)}\n\n"
+        f"REQUIRED JSON SCHEMA:\n{schema_def}\n\n"
+        "Return ONLY a valid JSON object INSTANCE that complies with this schema.\n"
+        "Do NOT return the JSON schema definition itself. No markdown, no explanation."
     )
     
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=SystemDesign,
-            temperature=TEMPERATURE,
-        ),
-    )
-    
-    design: SystemDesign = response.parsed
+    from src.llm import generate_validated_model
+    design = generate_validated_model(prompt, SystemDesign)
+        
     elapsed = round(time.time() - start, 2)
     
     events.append({

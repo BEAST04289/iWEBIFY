@@ -1,28 +1,22 @@
-"""iWebify configuration — loads from environment variables."""
-import os
+from pydantic_settings import BaseSettings
 from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
+class Settings(BaseSettings):
+    OPENROUTER_API_KEY: str
+    MODEL_NAME: str = "google/gemini-2.0-flash-exp:free"
+    REPAIR_MODEL: str = "google/gemini-2.0-flash-exp:free"
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    MAX_REPAIR_ATTEMPTS: int = 3
+    SESSIONS_DIR: str = "/tmp/iwebify_sessions"
 
-# Paths
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
+
 BASE_DIR = Path(__file__).parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
-SESSIONS_DIR = Path(os.getenv("SESSIONS_DIR", "/tmp/iwebify_sessions"))
-
-# Gemini
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.0-flash")
-TEMPERATURE = float(os.getenv("TEMPERATURE", "0.1"))
-REPAIR_TEMPERATURE = float(os.getenv("REPAIR_TEMPERATURE", "0.0"))
-
-# Pipeline
-MAX_REPAIR_ATTEMPTS = int(os.getenv("MAX_REPAIR_ATTEMPTS", "3"))
-
-# Server
-SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
-RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "5"))
-PORT = int(os.getenv("PORT", "7860"))
-
-# Ensure sessions directory exists
+SESSIONS_DIR = Path(settings.SESSIONS_DIR)
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+PORT = 7860
+MAX_REPAIR_ATTEMPTS = settings.MAX_REPAIR_ATTEMPTS
